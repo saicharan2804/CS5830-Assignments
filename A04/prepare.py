@@ -1,50 +1,56 @@
 import os
 import pandas as pd
 
-# Load the data
-data_dir = 'data'
-gt_dir = 'ground_truth'
-file_names = os.listdir(data_dir)
-
-# Initialize a set to store the common columns
-common_columns = set()
-
-for i, file_name in enumerate(file_names):
-    df = pd.read_csv(os.path.join(data_dir, file_name), low_memory=False)
-
-    # Extract the monthly data
-    monthly_column_names = [col for col in df.columns if col[0:7] == 'Monthly']
-    monthly_column_names.append('DATE')
-
-    monthly_data = df[monthly_column_names]
+def extract_monthly_data(file_path):
+    """Extracts columns that contain monthly data and appends the month extracted from the DATE column."""
+    df = pd.read_csv(file_path, low_memory=False)
+    monthly_columns = [col for col in df.columns if col.startswith('Monthly')]
+    monthly_columns.append('DATE')
+    monthly_data = df[monthly_columns]
     monthly_data['MONTH'] = monthly_data['DATE'].apply(lambda x: x[5:7])
-
-    # Drop the date
     monthly_data.drop('DATE', axis=1, inplace=True)
+    return monthly_data
 
-    # Handle the missing data
+def clean_and_calculate_means(monthly_data):
+    """Cleans the data by dropping all-NaN columns and fills missing values with column means, excluding 'MONTH'."""
     monthly_data.dropna(axis=1, how='all', inplace=True)
-
-    # Calculate the mean of each column, excluding 'MONTH'
     mean_values = monthly_data.drop('MONTH', axis=1).mean()
-
-    # Fill the missing values with the calculated mean values
     monthly_data.fillna(mean_values, inplace=True)
+    return monthly_data
 
-    # Save the monthly data with a unique name
-    base_name, _ = os.path.splitext(file_name)
-    monthly_data.to_csv(os.path.join(gt_dir, f'monthly_{base_name}.csv'), index=False)
-
-    # Update the common columns
-    if i == 0:
-        common_columns = set(monthly_data.columns)
+def update_common_columns(common_columns, new_columns, first_iteration):
+    """Updates the set of common columns based on current file's columns."""
+    if first_iteration:
+        return set(new_columns)
     else:
-        common_columns = common_columns.intersection(set(monthly_data.columns))
+        return common_columns.intersection(set(new_columns))
 
-# Remove 'MONTH' from the common columns
-common_columns.discard('MONTH')
+def main():
+    data_directory = 'data'
+    ground_truth_directory = 'ground_truth'
+    file_names = os.listdir(data_directory)
 
-# Save the common columns to a text file
-with open(os.path.join(gt_dir, 'monthly_columns.txt'), 'w') as f:
-    for item in common_columns:
-        f.write("%s\n" % item)
+    common_columns = set()
+
+    for i, file_name in enumerate(file_names):
+        file_path = os.path.join(data_directory, file_name)
+        monthly_data = extract_monthly_data(file_path)
+        monthly_data = clean_and_calculate_means(monthly_data)
+
+        # Save the monthly data with a unique name
+        base_name, _ = os.path.splitext(file_name)
+        monthly_data.to_csv(os.path.join(ground_truth_directory, f'monthly_{base_name}.csv'), index=False)
+
+        # Update the common columns
+        common_columns = update_common_columns(common_columns, monthly_data.columns, i == 0)
+
+    # Remove 'MONTH' from the common columns
+    common_columns.discard('MONTH')
+
+    # Save the common columns to a text file
+    with open(os.path.join(ground_truth_directory, 'monthly_columns.txt'), 'w') as f:
+        for column in common_columns:
+            f.write(f"{column}\n")
+
+if __name__ == '__main__':
+    main()
