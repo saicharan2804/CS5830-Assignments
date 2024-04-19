@@ -1,0 +1,9 @@
+stages:
+  download:
+    cmd: download.py
+  prepare:
+    cmd: prepare.py
+  process:
+    cmd: process.py
+  evaluate:
+    cmd: evaluate.py
