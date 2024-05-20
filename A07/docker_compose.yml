@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  web:
+    build: ./src
+    command: uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
+    volumes:
+      - ./src/:/app/
+    ports:
+      - "8100-8102:8000"
+    environment:
+      - DATABASE_URL=postgresql://saicharan:fastapi_app_mnist
+    depends_on:
+      - db
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "1"
+
+  db:
+    image: postgres:13.1-alpine
+    environment:
+      - POSTGRES_USER=saicharan
+      - POSTGRES_PASSWORD=saicharan
+      - POSTGRES_DB=saicharan_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus_instance
+    ports:
+      - 9090:9090
+    volumes:
+      - type: bind
+        source: ./prometheus_data/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana_instance
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  postgres_data:
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./prometheus_data
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./grafana_data
+
+networks:
+  default:
+    name: saicharan

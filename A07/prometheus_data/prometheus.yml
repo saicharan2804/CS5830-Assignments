@@ -1,0 +1,38 @@
+# Prometheus Configuration File
+
+# Global Configuration
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+# Alerting Configuration
+alerting:
+  alertmanagers:
+  - follow_redirects: true
+    enable_http2: true
+    scheme: http
+    timeout: 10s
+    api_version: v2
+    static_configs:
+    - targets: []
+
+# Scrape Configurations
+scrape_configs:
+- job_name: monitoring_prometheus
+  honor_timestamps: true
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  metrics_path: /metrics
+  scheme: http
+  follow_redirects: true
+  enable_http2: true
+  static_configs:
+  - targets:
+    - localhost:9090
+
+- job_name: monitoring_fastapi
+  scrape_interval: 10s
+  metrics_path: /metrics
+  static_configs:
+    - targets: ['web:8000']
